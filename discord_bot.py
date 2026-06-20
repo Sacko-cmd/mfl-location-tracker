@@ -1,3 +1,5 @@
+import time
+
 import discord
 from discord.ext import commands
 
@@ -32,6 +34,16 @@ bot = commands.Bot(command_prefix="/", intents=intents, help_command=None)
 @bot.event
 async def on_ready():
     log_info(f"Discord bot logged in as {bot.user} (ID {bot.user.id})")
+
+
+@bot.event
+async def on_disconnect():
+    log_error("Discord bot disconnected from gateway.")
+
+
+@bot.event
+async def on_resumed():
+    log_info("Discord bot connection resumed.")
 
 
 @bot.event
@@ -245,4 +257,12 @@ def run_bot():
         log_error("DISCORD_TOKEN missing; bot cannot start.")
         return
 
-    bot.run(DISCORD_TOKEN, log_handler=None)
+    while True:
+        try:
+            log_info("Connecting Discord bot...")
+            bot.run(DISCORD_TOKEN, log_handler=None, reconnect=True)
+        except Exception as e:
+            log_error(f"Discord bot crashed: {e}")
+
+        log_info("Discord bot restarting in 30 seconds...")
+        time.sleep(30)
