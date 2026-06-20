@@ -40,6 +40,23 @@ def get_city_history(
     return rows
 
 
+def get_recent_history(limit=10):
+    conn = sqlite3.connect(DATABASE_FILE)
+    cursor = conn.cursor()
+    cursor.execute(
+        """
+        SELECT *
+        FROM transfers
+        ORDER BY timestamp DESC
+        LIMIT ?
+        """,
+        (limit,),
+    )
+    rows = cursor.fetchall()
+    conn.close()
+    return rows
+
+
 def get_manager_history(
         manager
 ):

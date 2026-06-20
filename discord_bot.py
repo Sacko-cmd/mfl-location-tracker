@@ -10,7 +10,7 @@ from commands.country_list import get_country_list
 from commands.export_history import export_history
 from commands.health import health_command
 from commands.help import help_text
-from commands.history import history_command
+from commands.history import history_command, recent_command
 from commands.list import list_watchlist
 from commands.manager import manager_history
 from commands.pause import pause_notifications, resume_notifications
@@ -156,6 +156,24 @@ async def remove_clubid(ctx, club_id: str):
 async def club_list(ctx):
     club_ids = get_club_list()
     await ctx.send(", ".join(club_ids) if club_ids else "No club IDs watched.")
+
+
+@bot.command(name="recent")
+async def recent(ctx, limit: int = 10):
+    limit = max(1, min(limit, 20))
+    rows = recent_command(limit)
+    if not rows:
+        await ctx.send("No transfers recorded yet.")
+        return
+
+    lines = []
+    for row in rows:
+        lines.append(
+            f"{row['timestamp']} | {row['city']}, {row['country']} | "
+            f"{row['manager']} | {row['club_name']} ({row['club_id']})"
+        )
+
+    await ctx.send("\n".join(lines))
 
 
 @bot.command(name="history")
