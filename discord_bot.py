@@ -251,24 +251,40 @@ async def health(ctx):
 
 @bot.command(name="search")
 async def search(ctx, *, query: str):
+    parts = query.rsplit(" ", 1)
+    limit = 15
+
+    if len(parts) == 2 and parts[1].isdigit():
+        search_query = parts[0].strip()
+        limit = max(1, min(int(parts[1]), 50))
+    else:
+        search_query = query.strip()
+
+    if not search_query:
+        await ctx.send("Usage: `/search Nashville` or `/search Nashville 30`")
+        return
+
     try:
-        matches = search_locations(query)
+        matches = search_locations(search_query)
     except Exception as e:
         await ctx.send(f"Search failed: {e}")
         return
 
     if not matches:
-        await ctx.send(f"No locations found matching `{query}`.")
+        await ctx.send(f"No locations found matching `{search_query}`.")
         return
 
-    lines = [f"Found **{len(matches)}** location(s) matching `{query}`:"]
-    for item in matches[:15]:
+    lines = [
+        f"Found **{len(matches)}** location(s) matching `{search_query}` "
+        f"(showing {min(len(matches), limit)}):"
+    ]
+    for item in matches[:limit]:
         lines.append(
             f"- {item['city']}, {item['country']} (ID {item['club_id']})"
         )
 
-    if len(matches) > 15:
-        lines.append(f"...and {len(matches) - 15} more.")
+    if len(matches) > limit:
+        lines.append(f"...and {len(matches) - limit} more. Use `/search {search_query} 50` for more.")
 
     await ctx.send("\n".join(lines))
 

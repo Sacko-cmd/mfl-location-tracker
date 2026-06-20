@@ -29,6 +29,7 @@ def help_text():
 /remove_clubid ID
 
 /search QUERY
+/search QUERY 30
 
 /wallet
 
