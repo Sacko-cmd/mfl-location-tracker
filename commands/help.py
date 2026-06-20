@@ -20,6 +20,10 @@ def help_text():
 
 /country_remove COUNTRY
 
+/country_list
+
+/club_list
+
 /clubid ID
 
 /remove_clubid ID
@@ -37,5 +41,7 @@ def help_text():
 /stats
 
 /health
+
+/version
 
 """
