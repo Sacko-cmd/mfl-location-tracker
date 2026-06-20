@@ -28,6 +28,8 @@ def help_text():
 
 /remove_clubid ID
 
+/wallet
+
 /recent
 
 /history CITY

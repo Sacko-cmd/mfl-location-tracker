@@ -4,9 +4,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-CENTRAL_WALLET = "0xf45dfaa6233fae44"
-
-FLOWTY_URL = f"https://api2.flowty.io/user/{CENTRAL_WALLET}"
+CENTRAL_WALLET = os.getenv("CENTRAL_WALLET", "0xf45dfaa6233fae44")
 
 LEADERBOARD_URL = (
     "https://z519wdyajg.execute-api.us-east-1.amazonaws.com/"

@@ -23,6 +23,7 @@ from commands.stats import stats_command
 from commands.status import get_status
 from commands.version import version
 from commands.watchall import enable_watchall
+from flowty import fetch_locations
 from logger import log_error, log_info
 
 intents = discord.Intents.default()
@@ -245,6 +246,25 @@ async def stats(ctx):
 @bot.command(name="health")
 async def health(ctx):
     await ctx.send(health_command())
+
+
+@bot.command(name="wallet")
+async def wallet(ctx):
+    try:
+        locations = fetch_locations()
+        sample = list(locations.values())[:5]
+        lines = [
+            f"Pool wallet has **{len(locations)}** locations.",
+            "",
+            "Sample:",
+        ]
+        for item in sample:
+            lines.append(
+                f"- {item['city']}, {item['country']} (ID {item['club_id']})"
+            )
+        await ctx.send("\n".join(lines))
+    except Exception as e:
+        await ctx.send(f"Wallet check failed: {e}")
 
 
 @bot.command(name="version")
