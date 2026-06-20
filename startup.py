@@ -23,6 +23,15 @@ def start_discord_bot():
     threading.Thread(target=run_bot, daemon=True).start()
 
 
+def start_wallet_refresh():
+    def worker():
+        log_info("Wallet refresh thread started.")
+        run_wallet_refresh()
+        log_info("Wallet refresh thread finished.")
+
+    threading.Thread(target=worker, daemon=True).start()
+
+
 def startup():
     log_info("Starting MFL tracker...")
 
@@ -36,10 +45,7 @@ def startup():
         log_info("Watchlist OK")
 
         start_discord_bot()
-
-        log_info("Refreshing wallets...")
-        run_wallet_refresh()
-        log_info("Wallet refresh OK")
+        start_wallet_refresh()
 
         log_info("Starting scheduler...")
         run()

@@ -1,46 +1,21 @@
+import logging
+import sys
 from datetime import datetime
 
 
-def log_info(
-        message
-):
-
-    print(
-
-        f"[INFO] "
-
-        f"{datetime.utcnow()} "
-
-        f"{message}"
-
-    )
+def _emit(level, message):
+    line = f"[{level}] {datetime.utcnow()} {message}"
+    print(line, flush=True)
+    sys.stdout.flush()
 
 
-def log_warning(
-        message
-):
-
-    print(
-
-        f"[WARNING] "
-
-        f"{datetime.utcnow()} "
-
-        f"{message}"
-
-    )
+def log_info(message):
+    _emit("INFO", message)
 
 
-def log_error(
-        message
-):
+def log_warning(message):
+    _emit("WARNING", message)
 
-    print(
 
-        f"[ERROR] "
-
-        f"{datetime.utcnow()} "
-
-        f"{message}"
-
-    )
+def log_error(message):
+    _emit("ERROR", message)
