@@ -19,6 +19,7 @@ from commands.pause import pause_notifications, resume_notifications
 from commands.rebuild_wallet_cache import rebuild_wallet_cache
 from commands.refresh_now import refresh_now
 from commands.remove import remove_city
+from commands.search import search_locations
 from commands.stats import stats_command
 from commands.status import get_status
 from commands.version import version
@@ -246,6 +247,30 @@ async def stats(ctx):
 @bot.command(name="health")
 async def health(ctx):
     await ctx.send(health_command())
+
+
+@bot.command(name="search")
+async def search(ctx, *, query: str):
+    try:
+        matches = search_locations(query)
+    except Exception as e:
+        await ctx.send(f"Search failed: {e}")
+        return
+
+    if not matches:
+        await ctx.send(f"No locations found matching `{query}`.")
+        return
+
+    lines = [f"Found **{len(matches)}** location(s) matching `{query}`:"]
+    for item in matches[:15]:
+        lines.append(
+            f"- {item['city']}, {item['country']} (ID {item['club_id']})"
+        )
+
+    if len(matches) > 15:
+        lines.append(f"...and {len(matches) - 15} more.")
+
+    await ctx.send("\n".join(lines))
 
 
 @bot.command(name="wallet")
