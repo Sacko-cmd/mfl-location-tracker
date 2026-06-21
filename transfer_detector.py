@@ -22,6 +22,33 @@ def _hours_since(iso_timestamp):
     return (datetime.utcnow() - seen).total_seconds() / 3600
 
 
+def _notify_subscribers(city, country, club_id, embed):
+    from config import DISCORD_WEBHOOK_URL
+    from subscribers import get_notification_targets
+
+    sent = 0
+    for sub in get_notification_targets():
+        user_id = sub["discord_user_id"]
+        if not should_notify(user_id, city, country, club_id):
+            continue
+        try:
+            send_notification(embed, webhook_url=sub["webhook_url"])
+            sent += 1
+            log_info(f"Notified subscriber {user_id} for club {club_id}.")
+        except Exception as e:
+            log_warning(f"Failed to notify subscriber {user_id}: {e}")
+
+    if DISCORD_WEBHOOK_URL:
+        try:
+            send_notification(embed, webhook_url=DISCORD_WEBHOOK_URL)
+            sent += 1
+        except Exception as e:
+            log_warning(f"Failed to notify admin webhook: {e}")
+
+    if sent == 0:
+        log_warning(f"No subscribers notified for club {club_id}.")
+
+
 def detect_transfers():
     previous = load_state()
     current = fetch_locations()
@@ -99,10 +126,6 @@ def detect_transfers():
             new_state[club_id] = ghost
             continue
 
-        if not should_notify(city, country, club_id):
-            processed.add(club_id)
-            continue
-
         recipient = find_recipient(club_id)
         if recipient is None:
             log_warning(
@@ -169,8 +192,8 @@ def detect_transfers():
                 club_name=recipient["club_name"],
                 club_id=str(club_id),
             )
-            send_notification(embed)
-            log_info(f"Sent notification for {city}, {country} (club {club_id}).")
+            _notify_subscribers(city, country, club_id, embed)
+            log_info(f"Processed notification for {city}, {country} (club {club_id}).")
         except Exception as e:
             log_warning(f"Failed to send notification for club {club_id}: {e}")
 

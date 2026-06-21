@@ -1,32 +1,11 @@
-from watchlist import (
-    load_watchlist
-)
+from watchlist import load_watchlist
 
 
-def list_watchlist():
-
-    watchlist = load_watchlist()
-
-    cities = watchlist["cities"]
-
-    countries = (
-        watchlist["countries"]
-    )
-
-    club_ids = (
-        watchlist["club_ids"]
-    )
-
+def list_watchlist(user_id):
+    watchlist = load_watchlist(user_id)
     return {
-
-        "cities": cities,
-
-        "countries": countries,
-
-        "club_ids": club_ids,
-
-        "paused": watchlist[
-            "paused"
-        ]
-
+        "cities": watchlist["cities"],
+        "countries": watchlist["countries"],
+        "club_ids": watchlist["club_ids"],
+        "paused": watchlist["paused"],
     }

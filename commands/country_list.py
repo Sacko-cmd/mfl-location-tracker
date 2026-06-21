@@ -1,16 +1,6 @@
-from watchlist import (
-    load_watchlist
-)
+from watchlist import load_watchlist
 
 
-def get_country_list():
-
-    watchlist = load_watchlist()
-
-    return sorted(
-
-        watchlist[
-            "countries"
-        ]
-
-    )
+def get_country_list(user_id):
+    watchlist = load_watchlist(user_id)
+    return sorted(watchlist["countries"])

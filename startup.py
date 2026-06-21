@@ -5,7 +5,6 @@ from database import initialise_database
 from logger import log_error, log_info
 from scheduler import run
 from wallet_refresh import run_wallet_refresh
-from watchlist import create_watchlist
 
 
 def start_discord_bot():
@@ -39,10 +38,6 @@ def startup():
         log_info("Initialising database...")
         initialise_database()
         log_info("Database OK")
-
-        log_info("Creating watchlist...")
-        create_watchlist()
-        log_info("Watchlist OK")
 
         start_discord_bot()
         start_wallet_refresh()

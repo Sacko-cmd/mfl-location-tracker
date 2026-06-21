@@ -27,6 +27,6 @@ MAX_DEPARTURE_AGE_HOURS = int(os.getenv("MAX_DEPARTURE_AGE_HOURS", "6"))
 
 DATABASE_FILE = "transfers.db"
 WALLET_CACHE_FILE = "wallets.json"
-WATCHLIST_FILE = "watchlist.json"
+WATCHLIST_FILE = "watchlist.json"  # legacy; watchlists now live in SQLite
 
 PORT = int(os.getenv("PORT", "10000"))
