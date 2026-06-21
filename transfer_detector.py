@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime
 
 from club_lookup import fetch_club_by_id
 from config import (
