@@ -17,6 +17,7 @@ def detect_transfers():
 
     disappeared = set(previous.keys()) - set(current.keys())
     events = []
+    processed = set()
 
     if not disappeared:
         save_state(current)
@@ -24,8 +25,9 @@ def detect_transfers():
 
     wallet_cache = load_wallet_cache()
     if not wallet_cache:
-        log_warning("Wallet cache is empty; cannot match recipients yet.")
-        save_state(current)
+        log_warning(
+            "Wallet cache is empty; keeping previous state so departures can be retried."
+        )
         return events
 
     for club_id in disappeared:
@@ -34,12 +36,17 @@ def detect_transfers():
         country = club["country"]
 
         if not should_notify(city, country, club_id):
+            processed.add(club_id)
             continue
 
         recipient = find_recipient(city, wallet_cache)
         if recipient is None:
-            log_warning(f"No recipient found for {city}, {country} (club {club_id}).")
+            log_warning(
+                f"No recipient found for {city}, {country} (club {club_id}). Will retry."
+            )
             continue
+
+        processed.add(club_id)
 
         insert_transfer(
             timestamp=datetime.utcnow().isoformat(),
@@ -73,5 +80,10 @@ def detect_transfers():
         except Exception as e:
             log_warning(f"Failed to send notification for {city}: {e}")
 
-    save_state(current)
+    new_state = dict(current)
+    for club_id in disappeared:
+        if club_id not in processed:
+            new_state[club_id] = previous[club_id]
+
+    save_state(new_state)
     return events

@@ -16,7 +16,7 @@ def find_recipient(
 
                 club = item["club"]
 
-                if club["city"] == city:
+                if club["city"] and city and club["city"].lower() == city.lower():
 
                     return {
 
