@@ -3,6 +3,17 @@ from config import CENTRAL_WALLET
 from logger import log_warning
 
 
+def is_owned_by_pool(club_id):
+    try:
+        club = fetch_club_by_id(club_id)
+    except Exception:
+        return False
+
+    owned_by = club.get("ownedBy") or {}
+    wallet = owned_by.get("walletAddress")
+    return bool(wallet and wallet.lower() == CENTRAL_WALLET.lower())
+
+
 def find_recipient(club_id):
     try:
         club = fetch_club_by_id(club_id)
