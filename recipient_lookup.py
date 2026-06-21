@@ -1,36 +1,28 @@
-from club_lookup import fetch_wallet_clubs
+from club_lookup import fetch_club_by_id
+from config import CENTRAL_WALLET
+from logger import log_warning
 
 
-def find_recipient(
-        city,
-        wallet_cache
-):
+def find_recipient(club_id):
+    try:
+        club = fetch_club_by_id(club_id)
+    except Exception as e:
+        log_warning(f"Club lookup failed for ID {club_id}: {e}")
+        return None
 
-    for wallet, manager in wallet_cache.items():
+    owned_by = club.get("ownedBy") or {}
+    wallet = owned_by.get("walletAddress")
+    if not wallet:
+        return None
 
-        try:
+    if wallet.lower() == CENTRAL_WALLET.lower():
+        return None
 
-            clubs = fetch_wallet_clubs(wallet)
-
-            for item in clubs:
-
-                club = item["club"]
-
-                if club["city"] and city and club["city"].lower() == city.lower():
-
-                    return {
-
-                        "manager": manager,
-
-                        "wallet": wallet,
-
-                        "club_name": club["name"],
-
-                        "club_id": club["id"]
-                    }
-
-        except Exception:
-
-            continue
-
-    return None
+    return {
+        "manager": owned_by.get("name") or "Unknown",
+        "wallet": wallet,
+        "club_name": club.get("name") or "",
+        "club_id": str(club.get("id") or club_id),
+        "city": club.get("city"),
+        "country": club.get("country"),
+    }

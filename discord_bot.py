@@ -5,6 +5,7 @@ from discord.ext import commands
 
 from config import DISCORD_TOKEN
 from commands.add import add_city
+from commands.club_info import club_info
 from commands.club_list import get_club_list
 from commands.clubid import add_club_id, remove_club_id
 from commands.country import add_country, remove_country
@@ -16,6 +17,7 @@ from commands.history import history_command, recent_command
 from commands.list import list_watchlist
 from commands.manager import manager_history
 from commands.pause import pause_notifications, resume_notifications
+from commands.pool_status import get_pending_departures
 from commands.rebuild_wallet_cache import rebuild_wallet_cache
 from commands.refresh_now import refresh_now
 from commands.remove import remove_city
@@ -26,6 +28,7 @@ from commands.version import version
 from commands.watchall import enable_watchall
 from flowty import fetch_locations
 from logger import log_error, log_info
+from pool_log import read_pool_log
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -287,6 +290,69 @@ async def search(ctx, *, query: str):
         lines.append(f"...and {len(matches) - limit} more. Use `/search {search_query} 50` for more.")
 
     await ctx.send("\n".join(lines))
+
+
+@bot.command(name="poollog")
+async def poollog(ctx, limit: int = 15):
+    limit = max(1, min(limit, 30))
+    entries = read_pool_log(limit)
+    if not entries:
+        await ctx.send("No pool departures logged yet.")
+        return
+
+    lines = [f"Last **{len(entries)}** pool events:"]
+    for entry in entries:
+        status = entry.get("status", "unknown")
+        city = entry.get("city", "?")
+        country = entry.get("country", "?")
+        club_id = entry.get("club_id", "?")
+        timestamp = entry.get("timestamp", "?")
+        line = f"{timestamp} | {status} | {city}, {country} (ID {club_id})"
+        if entry.get("manager"):
+            line += f" -> {entry['manager']}"
+        lines.append(line)
+
+    await ctx.send("\n".join(lines))
+
+
+@bot.command(name="pending")
+async def pending(ctx):
+    try:
+        rows = get_pending_departures()
+    except Exception as e:
+        await ctx.send(f"Pending check failed: {e}")
+        return
+
+    if not rows:
+        await ctx.send("No pending pool departures.")
+        return
+
+    lines = [f"**{len(rows)}** location(s) left the pool and are still being tracked:"]
+    for row in rows[:20]:
+        lines.append(
+            f"- {row['city']}, {row['country']} (ID {row['club_id']})"
+        )
+    if len(rows) > 20:
+        lines.append(f"...and {len(rows) - 20} more.")
+
+    await ctx.send("\n".join(lines))
+
+
+@bot.command(name="club")
+async def club(ctx, club_id: str):
+    try:
+        info = club_info(club_id)
+    except Exception as e:
+        await ctx.send(f"Club lookup failed: {e}")
+        return
+
+    await ctx.send(
+        f"**Club {info['club_id']}**\n"
+        f"City: {info['city']}, {info['country']}\n"
+        f"Owner: {info['manager']}\n"
+        f"Wallet: {info['wallet']}\n"
+        f"Status: {info['status']}"
+    )
 
 
 @bot.command(name="wallet")

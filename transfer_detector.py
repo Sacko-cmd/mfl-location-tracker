@@ -4,10 +4,10 @@ from database import insert_transfer
 from discord_notifications import send_notification
 from flowty import fetch_locations
 from logger import log_info, log_warning
+from pool_log import log_pool_event
 from recipient_lookup import find_recipient
 from rich_embed import build_embed
 from storage import load_state, save_state
-from wallet_cache import load_wallet_cache
 from watchlist import should_notify
 
 
@@ -23,30 +23,42 @@ def detect_transfers():
         save_state(current)
         return events
 
-    wallet_cache = load_wallet_cache()
-    if not wallet_cache:
-        log_warning(
-            "Wallet cache is empty; keeping previous state so departures can be retried."
-        )
-        return events
-
     for club_id in disappeared:
         club = previous[club_id]
-        city = club["city"]
-        country = club["country"]
+        city = club.get("city")
+        country = club.get("country")
+
+        log_pool_event(
+            {
+                "club_id": club_id,
+                "city": city,
+                "country": country,
+                "status": "departed",
+            }
+        )
 
         if not should_notify(city, country, club_id):
             processed.add(club_id)
             continue
 
-        recipient = find_recipient(city, wallet_cache)
+        recipient = find_recipient(club_id)
         if recipient is None:
             log_warning(
-                f"No recipient found for {city}, {country} (club {club_id}). Will retry."
+                f"No owner found yet for club {club_id} ({city}, {country}). Will retry."
+            )
+            log_pool_event(
+                {
+                    "club_id": club_id,
+                    "city": city,
+                    "country": country,
+                    "status": "unmatched",
+                }
             )
             continue
 
         processed.add(club_id)
+        city = recipient.get("city") or city
+        country = recipient.get("country") or country
 
         insert_transfer(
             timestamp=datetime.utcnow().isoformat(),
@@ -56,6 +68,17 @@ def detect_transfers():
             manager=recipient["manager"],
             wallet=recipient["wallet"],
             club_name=recipient["club_name"],
+        )
+
+        log_pool_event(
+            {
+                "club_id": club_id,
+                "city": city,
+                "country": country,
+                "status": "matched",
+                "manager": recipient["manager"],
+                "wallet": recipient["wallet"],
+            }
         )
 
         event = {
@@ -76,9 +99,9 @@ def detect_transfers():
                 club_id=club_id,
             )
             send_notification(embed)
-            log_info(f"Sent notification for {city}, {country}.")
+            log_info(f"Sent notification for {city}, {country} (club {club_id}).")
         except Exception as e:
-            log_warning(f"Failed to send notification for {city}: {e}")
+            log_warning(f"Failed to send notification for club {club_id}: {e}")
 
     new_state = dict(current)
     for club_id in disappeared:

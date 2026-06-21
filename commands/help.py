@@ -34,6 +34,14 @@ def help_text():
 /wallet
 
 /recent
+/recent 15
+
+/poollog
+/poollog 15
+
+/pending
+
+/club ID
 
 /history CITY
 
