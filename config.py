@@ -16,6 +16,11 @@ CLUBS_URL = (
     "prod/clubs"
 )
 
+LISTINGS_URL = (
+    "https://z519wdyajg.execute-api.us-east-1.amazonaws.com/"
+    "prod/listings"
+)
+
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 DISCORD_WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL")
 
@@ -27,6 +32,9 @@ MAX_DEPARTURE_AGE_HOURS = int(os.getenv("MAX_DEPARTURE_AGE_HOURS", "6"))
 
 DATABASE_FILE = "transfers.db"
 WALLET_CACHE_FILE = "wallets.json"
+MONITORS_FILE = "monitors.json"
 WATCHLIST_FILE = "watchlist.json"  # legacy; watchlists now live in SQLite
+
+MAX_MONITORS_PER_INSTALL = int(os.getenv("MAX_MONITORS_PER_INSTALL", "5"))
 
 PORT = int(os.getenv("PORT", "10000"))

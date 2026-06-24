@@ -22,6 +22,15 @@ def start_discord_bot():
     threading.Thread(target=run_bot, daemon=True).start()
 
 
+def start_marketplace():
+    from marketplace.storage import ensure_monitors_file
+    from marketplace.scheduler import schedule_all
+
+    ensure_monitors_file()
+    log_info("Starting marketplace monitors...")
+    schedule_all()
+
+
 def start_wallet_refresh():
     def worker():
         log_info("Wallet refresh thread started.")
@@ -41,6 +50,7 @@ def startup():
 
         start_discord_bot()
         start_wallet_refresh()
+        start_marketplace()
 
         log_info("Starting scheduler...")
         run()

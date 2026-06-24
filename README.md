@@ -98,8 +98,21 @@ Visit `http://localhost:10000/health`.
 
 Use `"*"` in `cities` to watch all locations, or replace with specific city names.
 
+## Marketplace monitors (Chrome extension)
+
+The `extension/` folder is the MFL Marketplace Monitor UI. It talks to the same Render service as the location tracker (`/monitors` API).
+
+1. Load `extension/` as an unpacked Chrome extension (`chrome://extensions`)
+2. The server URL is pre-set to `https://mfl-location-tracker.onrender.com`
+3. Add monitors from MFL marketplace tabs as before — alerts go to your Discord webhook
+
+Each Chrome install is limited to **5 monitors** at a time. Delete one before adding another.
+
+After deploying this merged service, **suspend the old `mflmarketnotifictions` Render service** so you are not billed two free-tier instance hour pools.
+
 ## Notes for Render free tier
 
+- One web service runs both the location tracker and marketplace polling (~720 instance hours/month).
 - Local JSON/SQLite files reset when the service restarts or redeploys.
 - On restart, the tracker re-seeds ownership state on the next poll without sending false alerts.
 - For long-term history across restarts, you'd eventually want Render persistent disk or an external database.
