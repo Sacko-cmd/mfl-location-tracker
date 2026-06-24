@@ -1,3 +1,4 @@
+import threading
 import time
 from datetime import datetime, timezone
 
@@ -13,6 +14,16 @@ from marketplace.extract import (
     get_listing_id,
 )
 from marketplace.storage import load_monitors, save_monitors
+
+_poll_locks = {}
+_poll_locks_lock = threading.Lock()
+
+
+def _poll_lock(monitor_id):
+    with _poll_locks_lock:
+        if monitor_id not in _poll_locks:
+            _poll_locks[monitor_id] = threading.Lock()
+        return _poll_locks[monitor_id]
 
 
 def send_discord(monitor, items):
@@ -62,7 +73,6 @@ def send_discord(monitor, items):
         color = 0xF58426 if meta["listingType"] == "CLUB" else 0x9B59B6 if meta["listingType"] == "PACK" else 0x2563EB
         payload = {
             "username": "MFL Monitor",
-            "content": build_alert_text(item, monitor),
             "embeds": [{
                 "title": meta["name"],
                 "url": item_url,
@@ -89,7 +99,13 @@ def poll_monitor(monitor):
     if not monitor.get("apiUrl") or not monitor.get("enabled"):
         return
 
-    label = monitor.get("label") or monitor.get("id")
+    monitor_id = monitor.get("id")
+    lock = _poll_lock(monitor_id)
+    if not lock.acquire(blocking=False):
+        log_info(f"[Marketplace] Skipping concurrent poll for {monitor_id}")
+        return
+
+    label = monitor.get("label") or monitor_id
     log_info(f"[Marketplace] Polling: {label}")
 
     try:
@@ -106,7 +122,7 @@ def poll_monitor(monitor):
         if idx == -1:
             return
 
-        seen_ids = monitors[idx].get("seenIds") or []
+        seen_ids = [str(s) for s in (monitors[idx].get("seenIds") or [])]
         new_items = [
             item for item in listings
             if get_listing_id(item) and get_listing_id(item) not in seen_ids
@@ -136,3 +152,5 @@ def poll_monitor(monitor):
         if idx != -1:
             monitors[idx]["lastError"] = str(e)
             save_monitors(monitors)
+    finally:
+        lock.release()

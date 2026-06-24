@@ -1,10 +1,13 @@
 def get_listing_id(item):
-    return (
+    raw = (
         item.get("listingResourceId")
         or item.get("id")
         or item.get("listingId")
         or item.get("_id")
     )
+    if raw is None:
+        return None
+    return str(raw)
 
 
 def get_listing_type(item, monitor):

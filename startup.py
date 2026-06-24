@@ -22,7 +22,18 @@ def start_discord_bot():
     threading.Thread(target=run_bot, daemon=True).start()
 
 
+_marketplace_started = False
+_marketplace_lock = threading.Lock()
+
+
 def start_marketplace():
+    global _marketplace_started
+
+    with _marketplace_lock:
+        if _marketplace_started:
+            return
+        _marketplace_started = True
+
     from marketplace.storage import ensure_monitors_file
     from marketplace.scheduler import schedule_all
 
