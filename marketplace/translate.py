@@ -28,6 +28,9 @@ RANGE_LABELS = {
 }
 
 
+CLUB_STATUS_VALUES = frozenset({"NOT_FOUNDED", "FOUNDED"})
+
+
 def marketplace_type_from_path(pathname):
     p = (pathname or "").lower()
     if "/packs" in p:
@@ -41,9 +44,10 @@ def page_url_to_api_url(page_url):
     try:
         url = urlparse(page_url)
         p = url.path.lower()
+        listing_type = marketplace_type_from_path(p)
         api_params = {
             "limit": "25",
-            "type": marketplace_type_from_path(p),
+            "type": listing_type,
             "sorts": "listing.createdDateTime",
             "sortsOrders": "DESC",
             "status": "AVAILABLE",
@@ -51,6 +55,12 @@ def page_url_to_api_url(page_url):
         }
         for key, val in parse_qsl(url.query, keep_blank_values=True):
             if key == "sort":
+                continue
+            if key == "status":
+                if val.upper() in CLUB_STATUS_VALUES and listing_type == "CLUB":
+                    api_params["clubStatus"] = val
+                elif val.upper() != "AVAILABLE":
+                    api_params["status"] = val
                 continue
             if key in RANGE_MAP:
                 mn, mx = RANGE_MAP[key]
@@ -68,7 +78,7 @@ def page_url_to_api_url(page_url):
             if key == "activeContract" and "free" in val.lower():
                 api_params["isFreeAgent"] = "true"
                 continue
-            if key not in ("page", "tab", "view", "type"):
+            if key not in ("page", "tab", "view", "type", "status"):
                 api_params[key] = val
         return f"{LISTINGS_URL}?{urlencode(api_params)}"
     except Exception:

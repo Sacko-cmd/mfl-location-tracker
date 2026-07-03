@@ -14,12 +14,15 @@ function marketplaceTypeFromPath(pathname) {
   return "PLAYER";
 }
 
+const CLUB_STATUS_VALUES = new Set(["NOT_FOUNDED", "FOUNDED"]);
+
 function pageUrlToApiUrl(pageUrl) {
   try {
     const url = new URL(pageUrl);
     const p   = url.pathname.toLowerCase();
+    const listingType = marketplaceTypeFromPath(p);
     const apiParams = new URLSearchParams({
-      limit: "25", type: marketplaceTypeFromPath(p),
+      limit: "25", type: listingType,
       sorts: "listing.createdDateTime", sortsOrders: "DESC",
       status: "AVAILABLE", view: "full"
     });
@@ -37,6 +40,14 @@ function pageUrlToApiUrl(pageUrl) {
     };
     for (const [key, val] of url.searchParams.entries()) {
       if (key === "sort") continue;
+      if (key === "status") {
+        if (CLUB_STATUS_VALUES.has(val.toUpperCase()) && listingType === "CLUB") {
+          apiParams.set("clubStatus", val);
+        } else if (val.toUpperCase() !== "AVAILABLE") {
+          apiParams.set("status", val);
+        }
+        continue;
+      }
       if (rangeMap[key]) {
         const [mn, mx] = rangeMap[key];
         const [a, b]   = val.split(":");
@@ -46,7 +57,7 @@ function pageUrlToApiUrl(pageUrl) {
       }
       if (["positions.name","positions","position"].includes(key)) { apiParams.set("positions", val); continue; }
       if (key === "activeContract") { if (val.toLowerCase().includes("free")) apiParams.set("isFreeAgent","true"); continue; }
-      if (!["page","tab","view","type"].includes(key)) apiParams.set(key, val);
+      if (!["page","tab","view","type","status"].includes(key)) apiParams.set(key, val);
     }
     return `${BASE_API}?${apiParams.toString()}`;
   } catch { return null; }
