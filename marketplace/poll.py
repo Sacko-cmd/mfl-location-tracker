@@ -6,6 +6,7 @@ import requests
 
 from config import REQUEST_TIMEOUT_SECONDS
 from logger import log_error, log_info
+from mfl_api import mfl_get
 from marketplace.extract import (
     build_alert_text,
     extract_meta,
@@ -109,7 +110,7 @@ def poll_monitor(monitor):
     log_info(f"[Marketplace] Polling: {label}")
 
     try:
-        r = requests.get(monitor["apiUrl"], timeout=REQUEST_TIMEOUT_SECONDS)
+        r = mfl_get(monitor["apiUrl"])
         r.raise_for_status()
         json_data = r.json()
         if isinstance(json_data, list):

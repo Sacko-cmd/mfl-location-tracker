@@ -1,15 +1,13 @@
-import requests
-
-from config import CENTRAL_WALLET, CLUBS_URL, REQUEST_TIMEOUT_SECONDS
+from config import CENTRAL_WALLET, CLUBS_URL
 from logger import log_info
+from mfl_api import mfl_get
 
 
 def fetch_locations():
     log_info(f"Fetching pool wallet from MFL API: {CENTRAL_WALLET}")
-    response = requests.get(
+    response = mfl_get(
         CLUBS_URL,
         params={"walletAddress": CENTRAL_WALLET},
-        timeout=REQUEST_TIMEOUT_SECONDS,
     )
     response.raise_for_status()
     data = response.json()

@@ -1,7 +1,6 @@
-import requests
-
-from config import LEADERBOARD_URL, REQUEST_TIMEOUT_SECONDS
+from config import LEADERBOARD_URL
 from logger import log_info
+from mfl_api import mfl_get
 
 LIMIT = 20
 
@@ -14,7 +13,7 @@ def get_all_managers():
 
     while True:
         log_info(f"Fetching leaderboard offset {offset}...")
-        response = requests.get(
+        response = mfl_get(
             LEADERBOARD_URL,
             params={
                 "sort": "nbMflPoints",
@@ -22,7 +21,6 @@ def get_all_managers():
                 "limit": LIMIT,
                 "offset": offset,
             },
-            timeout=REQUEST_TIMEOUT_SECONDS,
         )
         response.raise_for_status()
 
