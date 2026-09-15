@@ -5,7 +5,7 @@
  * and keeps the extension alive for tab queries.
  */
 
-const BASE_API = "https://z519wdyajg.execute-api.us-east-1.amazonaws.com/prod/listings";
+const BASE_API = "https://api.playmfl.com/listings";
 
 function marketplaceTypeFromPath(pathname) {
   const p = (pathname || "").toLowerCase();

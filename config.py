@@ -6,20 +6,9 @@ load_dotenv()
 
 CENTRAL_WALLET = os.getenv("CENTRAL_WALLET", "0xf45dfaa6233fae44")
 
-LEADERBOARD_URL = (
-    "https://z519wdyajg.execute-api.us-east-1.amazonaws.com/"
-    "prod/leaderboards/users/global"
-)
-
-CLUBS_URL = (
-    "https://z519wdyajg.execute-api.us-east-1.amazonaws.com/"
-    "prod/clubs"
-)
-
-LISTINGS_URL = (
-    "https://z519wdyajg.execute-api.us-east-1.amazonaws.com/"
-    "prod/listings"
-)
+LEADERBOARD_URL = "https://api.playmfl.com/leaderboards/users/global"
+CLUBS_URL = "https://api.playmfl.com/clubs"
+LISTINGS_URL = "https://api.playmfl.com/listings"
 
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 DISCORD_WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL")
