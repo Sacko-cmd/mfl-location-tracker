@@ -2,6 +2,7 @@ import json
 import threading
 
 from config import MONITORS_FILE
+from mfl_api import normalize_mfl_url
 
 _lock = threading.Lock()
 
@@ -10,7 +11,11 @@ def load_monitors():
     with _lock:
         try:
             with open(MONITORS_FILE, encoding="utf8") as f:
-                return json.load(f)
+                monitors = json.load(f)
+            for monitor in monitors:
+                if monitor.get("apiUrl"):
+                    monitor["apiUrl"] = normalize_mfl_url(monitor["apiUrl"])
+            return monitors
         except (FileNotFoundError, json.JSONDecodeError):
             return []
 

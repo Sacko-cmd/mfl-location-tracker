@@ -1,10 +1,8 @@
 import json
 
-CACHE_FILE = (
+from config import data_file
 
-    "recipient_cache.json"
-
-)
+CACHE_FILE = data_file("recipient_cache.json")
 
 
 def load_recipient_cache():

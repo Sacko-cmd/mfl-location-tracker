@@ -1,6 +1,8 @@
 import json
 
-STATE_FILE = "ownership.json"
+from config import data_file
+
+STATE_FILE = data_file("ownership.json")
 
 
 def _normalize_entry(club_id, club):

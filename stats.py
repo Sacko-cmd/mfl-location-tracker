@@ -7,9 +7,9 @@ from config import (
 )
 
 
-LAST_REFRESH_FILE = (
-    "last_refresh.json"
-)
+from config import data_file
+
+LAST_REFRESH_FILE = data_file("last_refresh.json")
 
 
 def get_manager_count():

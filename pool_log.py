@@ -1,7 +1,9 @@
 import json
 from datetime import datetime
 
-POOL_LOG_FILE = "pool_changes.jsonl"
+from config import data_file
+
+POOL_LOG_FILE = data_file("pool_changes.jsonl")
 
 
 def log_pool_event(event):

@@ -116,3 +116,50 @@ After deploying this merged service, **suspend the old `mflmarketnotifictions` R
 - Local JSON/SQLite files reset when the service restarts or redeploys.
 - On restart, the tracker re-seeds ownership state on the next poll without sending false alerts.
 - For long-term history across restarts, you'd eventually want Render persistent disk or an external database.
+
+
+## API recovery and diagnostics
+
+All Python MFL calls use the browser-compatible headers in `mfl_api.py`.
+`MFL_API_BASE_URL` defaults to `https://api.playmfl.com`. Saved monitor URLs
+using the retired AWS `/prod` host are normalized when loaded and when requested;
+query parameters and seen listing IDs are preserved. Old extension installs are
+therefore compatible with the updated server. The rewritten URL is persisted on
+the next monitor save.
+
+`/health` is a process liveness endpoint (HTTP 200 so an upstream outage does not
+cause restart loops). Use `/status` for operational diagnostics: `status` becomes
+`degraded` when location polling fails or goes stale, the database is unavailable,
+or enabled marketplace monitors have errors or await their first successful check.
+The response includes poll timestamps and an error class, plus monitor counts.
+Zero configured monitors means marketplace alerts are inactive, even when location
+tracking is healthy. Wallet-cache availability is informational: location ownership
+is fetched directly and does not depend on the leaderboard cache.
+
+## Keep data across Render restarts
+
+The existing free blueprint uses ephemeral storage and can also spin down while
+idle. For an always-running tracker with durable local state:
+
+1. In Render, use a paid web service and attach a persistent disk at `/var/data`.
+2. Set `DATA_DIR=/var/data` and deploy this version. The directory must be the
+   actual disk mount; setting an environment variable alone is not persistence.
+3. Before changing storage or deploying, back up existing state if it is still
+   available. With the service stopped, restore `transfers.db`, `monitors.json`,
+   `ownership.json`, `wallets.json`, `pool_changes.jsonl`, `recipient_cache.json`,
+   and `last_refresh.json` into the mount. Do not copy a live SQLite database
+   without using SQLite's backup API. No automatic copy is performed.
+4. Check `/status`, recreate missing marketplace monitors in the extension, and
+   use `/mysettings` in Discord to check your registration and watchlist.
+   Re-register and restore watchlists if the old database was lost.
+
+All application state uses `DATA_DIR`; leaving it unset preserves local behavior.
+Monitor definitions or registrations already lost from ephemeral storage require
+a backup or user re-entry. This change cannot recover them.
+
+Render documentation: https://render.com/docs/disks and https://render.com/docs/free
+
+## Tests
+
+Run `python -m unittest discover -s tests -v`. Tests use temporary state and mocked
+network requests; they do not contact Discord or modify deployed monitors.

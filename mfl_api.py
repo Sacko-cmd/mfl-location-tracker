@@ -1,6 +1,8 @@
+from urllib.parse import urlsplit, urlunsplit
+
 import requests
 
-from config import REQUEST_TIMEOUT_SECONDS
+from config import MFL_API_BASE_URL, REQUEST_TIMEOUT_SECONDS
 
 MFL_API_HEADERS = {
     "User-Agent": (
@@ -14,7 +16,21 @@ MFL_API_HEADERS = {
 }
 
 
+def normalize_mfl_url(url):
+    """Upgrade known MFL endpoints, including URLs saved by old extensions."""
+    parts = urlsplit(url)
+    path = parts.path
+    if parts.netloc == "z519wdyajg.execute-api.us-east-1.amazonaws.com" and path.startswith("/prod/"):
+        path = path[len("/prod"):]
+    elif parts.netloc != "api.playmfl.com":
+        return url
+    if parts.scheme != "https":
+        return url
+    base = urlsplit(MFL_API_BASE_URL)
+    return urlunsplit((base.scheme, base.netloc, base.path + path, parts.query, parts.fragment))
+
+
 def mfl_get(url, **kwargs):
     headers = {**MFL_API_HEADERS, **kwargs.pop("headers", {})}
     kwargs.setdefault("timeout", REQUEST_TIMEOUT_SECONDS)
-    return requests.get(url, headers=headers, **kwargs)
+    return requests.get(normalize_mfl_url(url), headers=headers, **kwargs)

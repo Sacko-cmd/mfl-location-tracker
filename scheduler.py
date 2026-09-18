@@ -3,6 +3,7 @@ import time
 from config import CHECK_INTERVAL_SECONDS, WALLET_REFRESH_HOURS
 from logger import log_error, log_info
 from transfer_detector import detect_transfers
+from tracker_status import poll_started, poll_finished
 from wallet_cache import refresh_wallet_cache
 
 
@@ -22,10 +23,14 @@ def run():
             except Exception as e:
                 log_error(f"Wallet cache refresh failed: {e}")
 
+        poll_started()
         try:
             detect_transfers()
         except Exception as e:
+            poll_finished(e)
             log_error(f"Transfer check failed: {e}")
+        else:
+            poll_finished()
 
         time.sleep(CHECK_INTERVAL_SECONDS)
 

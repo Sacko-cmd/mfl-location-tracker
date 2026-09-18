@@ -43,7 +43,9 @@ def health():
 @app.route("/status")
 def status():
     report = run_healthcheck()
+    report["status"] = "ok" if report["healthy"] else "degraded"
     report["tracker_started"] = _tracker_started
+    report["revision"] = os.getenv("RENDER_GIT_COMMIT")
     return jsonify(report), 200
 
 
