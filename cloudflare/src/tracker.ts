@@ -1,3 +1,4 @@
+import {enqueue} from "./discord";
 import {headers, readBounded} from "./diagnostics";
 import {comparePools, parsePool, type Pool} from "./tracking";
 
@@ -43,24 +44,15 @@ async function deliver(env: Env) {
   }
   const pending = await env.DB.prepare("SELECT * FROM transfers WHERE delivery = 'pending' ORDER BY detected_at LIMIT 5").all<Transfer>();
   for (const event of pending.results) {
-    const response = await fetch(url, {
-      method: "POST", redirect: "manual", signal: AbortSignal.timeout(5000),
-      headers: {"Content-Type": "application/json"},
-      body: JSON.stringify({
-        username: "MFL Location Tracker", allowed_mentions: {parse: []},
-        embeds: [{
-          title: `${event.city}, ${event.country}`.slice(0, 256),
-          description: `Location moved to **${event.manager}**`.slice(0, 4096),
-          url: `https://app.playmfl.com/clubs/${event.club_id}`,
-          fields: [{name: "Club ID", value: event.club_id}, {name: "Wallet", value: event.wallet}],
-          timestamp: event.detected_at,
-        }],
-      }),
+    await enqueue(env, `transfer:${event.event_id}`, "global", event.event_id, {
+      username: "MFL Location Tracker", embeds: [{
+        title: `${event.city}, ${event.country}`.slice(0, 256),
+        description: `Location moved to **${event.manager}**`.slice(0, 4096),
+        url: `https://app.playmfl.com/clubs/${event.club_id}`,
+        fields: [{name: "Club ID", value: event.club_id}, {name: "Wallet", value: event.wallet}],
+        timestamp: event.detected_at,
+      }],
     });
-    await response.body?.cancel();
-    await env.DB.prepare("UPDATE transfers SET delivery = ?, delivery_attempts = delivery_attempts + 1 WHERE event_id = ?")
-      .bind(response.ok ? "sent" : "pending", event.event_id).run();
-    if (!response.ok) throw new Error(`Discord HTTP ${response.status}`);
   }
 }
 
@@ -107,16 +99,25 @@ export async function runPoll(env: Env) {
         }
       }));
     }
+    const subscribers = await env.DB.prepare("SELECT * FROM subscribers WHERE paused = 0").all<{user_id: string; webhook: string; cities: string; countries: string; club_ids: string}>();
     const statements = confirmed.map(event => env.DB.prepare(
       "INSERT OR IGNORE INTO transfers(event_id, detected_at, club_id, city, country, manager, wallet, club_name, delivery) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)",
     ).bind(event.event_id, event.detected_at, event.club_id, event.city, event.country, event.manager, event.wallet,
       event.club_name, env.DISCORD_WEBHOOK_URL ? "pending" : "not_configured"));
+    for (const event of confirmed) {
+      for (const sub of subscribers.results) {
+        if (sub.webhook === env.DISCORD_WEBHOOK_URL) continue;
+        const cities: string[] = JSON.parse(sub.cities), countries: string[] = JSON.parse(sub.countries), ids: string[] = JSON.parse(sub.club_ids);
+        if (!cities.includes("*") && !cities.some(city => city.toLowerCase() === event.city.toLowerCase()) && !countries.some(country => country.toLowerCase() === event.country.toLowerCase()) && !ids.includes(event.club_id)) continue;
+        const payload = {username: "MFL Location Tracker", embeds: [{title: `${event.city}, ${event.country}`.slice(0, 256), description: `Location moved to **${event.manager}**`.slice(0, 4096), url: `https://app.playmfl.com/clubs/${event.club_id}`, timestamp: event.detected_at}]};
+        statements.push(env.DB.prepare("INSERT OR IGNORE INTO notifications(id, source_kind, source_id, payload) VALUES(?, 'subscriber', ?, ?)").bind(`subscriber:${sub.user_id}:${event.event_id}`, sub.user_id, JSON.stringify(payload)));
+      }
+    }
     statements.push(env.DB.prepare(
       "UPDATE tracker SET state_json = ?, initialized = 1, pool_count = ?, pending_count = ?, last_success = ?, last_error = ? WHERE id = 1 AND lock_token = ?",
     ).bind(JSON.stringify(next), Object.keys(current).length, Object.values(next).filter(club => club.missingSince).length,
       now, failures.length ? failures[0] : null, token));
     await env.DB.batch(statements);
-    await deliver(env);
     console.log(JSON.stringify({event: "pool_poll", pool: Object.keys(current).length, transfers: confirmed.length, lookup_failures: failures.length}));
     return {ok: failures.length === 0, pool_count: Object.keys(current).length, transfers: confirmed.length};
   } catch (error) {
@@ -128,6 +129,10 @@ export async function runPoll(env: Env) {
     console.error(JSON.stringify({event: "poll_failed", error: message}));
     return {ok: false, error: message};
   } finally {
+    try {await deliver(env);} catch (error) {
+      const safe = error instanceof Error && error.message.startsWith("Discord ") ? error.message : "Discord delivery failed";
+      await env.DB.prepare("UPDATE tracker SET last_error = ? WHERE id = 1 AND lock_token = ?").bind(safe, token).run();
+    }
     await env.DB.prepare("UPDATE tracker SET lock_token = NULL, locked_until = 0 WHERE id = 1 AND lock_token = ?").bind(token).run();
   }
 }
@@ -138,13 +143,19 @@ export async function status(env: Env) {
     last_attempt: string | null; last_success: string | null; last_error: string | null;
   }>();
   const deliveries = await env.DB.prepare("SELECT delivery, COUNT(*) AS count FROM transfers GROUP BY delivery").all();
+  const registered = await env.DB.prepare("SELECT value FROM service_settings WHERE key = 'commands_registered'").first<{value: string}>();
+  const notificationSummary = await env.DB.prepare("SELECT SUM(state = 'sent') AS sent, SUM(state = 'pending' AND last_error IS NOT NULL) AS errors, MAX(sent_at) AS last_confirmed_delivery FROM notifications").first();
   const healthy = !!row?.last_success && Date.now() - Date.parse(row.last_success) < 180000 && !row.last_error;
   return {
     service: "MFL Location Tracker", runtime: "Cloudflare Workers", storage: "D1",
     status: healthy ? "ok" : "degraded", healthy, schedule: "every minute",
     confirm_missing_polls: Number(env.CONFIRM_MISSING_POLLS),
     alerts_enabled: !!env.DISCORD_WEBHOOK_URL,
-    discord_bot_commands: false, marketplace_monitors: false,
+    discord_bot_commands: !!env.DISCORD_APPLICATION_ID && !!env.DISCORD_PUBLIC_KEY && !!registered,
+    bot: {application_configured: !!env.DISCORD_APPLICATION_ID && !!env.DISCORD_PUBLIC_KEY, commands_registered_at: registered?.value ?? null},
+    discord_delivery: notificationSummary,
+    marketplace_monitors: false,
+    notifications: (await env.DB.prepare("SELECT state, COUNT(*) AS count FROM notifications GROUP BY state").all()).results,
     tracker: row, deliveries: deliveries.results,
   };
 }

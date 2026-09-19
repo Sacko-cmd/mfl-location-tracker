@@ -1,3 +1,5 @@
+import {handleInteraction, registerCommands} from "./bot";
+import {testAlert, flushNotifications} from "./discord";
 import {timingSafeEqual} from "node:crypto";
 import {diagnostics} from "./diagnostics";
 import {runPoll, status} from "./tracker";
@@ -12,6 +14,11 @@ function authorized(request: Request, env: Env) {
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
+    if (url.pathname === "/interactions" && request.method === "POST") return handleInteraction(request, env, ctx);
+    if (url.pathname === "/setup-discord" && request.method === "POST") {
+      if (!authorized(request, env)) return new Response("Unauthorized", {status: 401});
+      return Response.json(await registerCommands(env));
+    }
     if (request.method === "POST" && url.pathname === "/verify-webhook") {
       if (!authorized(request, env)) return new Response("Unauthorized", {status: 401});
       if (!env.DISCORD_WEBHOOK_URL) return Response.json({configured: false}, {status: 400});
@@ -22,6 +29,10 @@ export default {
       const result = await fetch(webhook, {redirect: "manual", signal: AbortSignal.timeout(10000)});
       await result.body?.cancel();
       return Response.json({valid: result.ok, status: result.status}, {headers: {"Cache-Control": "no-store"}});
+    }
+    if (request.method === "POST" && url.pathname === "/test-alert") {
+      if (!authorized(request, env)) return new Response("Unauthorized", {status: 401});
+      return Response.json(await testAlert(env), {headers: {"Cache-Control": "no-store"}});
     }
     if (request.method === "POST" && url.pathname === "/poll") {
       if (!authorized(request, env)) return new Response("Unauthorized", {status: 401});
@@ -47,5 +58,6 @@ export default {
   },
   async scheduled(_controller, env) {
     await runPoll(env);
+    await flushNotifications(env);
   },
 } satisfies ExportedHandler<Env>;

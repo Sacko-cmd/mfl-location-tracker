@@ -18,19 +18,34 @@ The scheduled handler uses a database lease and minimum interval to avoid counti
 concurrent/duplicate invocations as separate missing polls.
 
 Confirmed transfers and the updated baseline commit in one D1 batch. Notifications
-are sent from a durable outbox; failed sends are retried on subsequent successful
-polls. Discord delivery is at least once: a crash after Discord accepts a message
+are sent from a durable outbox; failed sends are retried with backoff on subsequent scheduled runs. Discord delivery is at least once: a crash after Discord accepts a message
 but before the database update can produce a duplicate. With no webhook configured,
 transfers are recorded as `not_configured` and are not backfilled automatically.
 
 ## Scope
 
-Location tracking and the shared Discord webhook are active. The Python Discord
-prefix-command bot, per-user registrations/watchlists, and marketplace monitor
-backend are not part of this port. The existing Render service and extension URL
-are unchanged. Do not run two active location-alert services against the same
-webhook unless duplicate alerts are acceptable. The Render owner should disable
-its location polling after this replacement is accepted.
+Club licence departures from the central pool and the shared Discord webhook are
+active. Player, club, and pack marketplace listing alerts are disabled and have no
+scheduled poller or configuration routes in this Worker.
+
+The port provides Discord slash commands for licence lookup, search, ownership,
+history, recent purchases, pool/status queries, and personal licence watchlists.
+These require a configured Discord application before becoming available; check
+`discord_bot_commands` in live status. The original Python prefix bot is separate.
+The Render owner should disable its location polling to avoid duplicate alerts.
+
+### Discord application setup
+
+Set `DISCORD_APPLICATION_ID` and `DISCORD_PUBLIC_KEY` in Wrangler configuration,
+store the application's bot token with `wrangler secret put DISCORD_BOT_TOKEN`,
+and deploy. Set the application's Interactions Endpoint URL to the Worker's
+`/interactions` endpoint. Requests are verified using Discord's Ed25519 signature.
+Call `POST /setup-discord` with the administrative bearer token to register slash
+commands, then install the application in the intended Discord server.
+
+Search commands include `/club`, `/search`, `/history`, `/manager`, `/recent`,
+`/wallet`, `/pending`, `/stats`, `/poollog`, and `/export_history`. `/help` lists
+available commands. Watchlist commands concern club licences only.
 
 ## Development and deployment
 
@@ -71,6 +86,11 @@ to propagate.
 - `POST /verify-webhook`: validate the configured webhook with a read-only Discord
   request; requires the same administrative authorization. It sends no message.
 
-Status responses never reveal the webhook or administrative token. Real Discord
-alert delivery is verified only when a transfer is detected and `delivery` becomes
-`sent`; validating a webhook alone does not prove a message was delivered.
+- `POST /test-alert`: idempotent setup test, requiring administrative authorization.
+  A successful send records Discord's message ID and channel ID in D1.
+- `POST /setup-discord`: register application commands; administrative authorization.
+- `POST /interactions`: signature-verified Discord interaction endpoint.
+
+Status responses never reveal webhook or administrative credentials. Delivery
+requires Discord to acknowledge a saved message, and receipts are persisted.
+A setup-test receipt proves connectivity; it does not represent a real purchase.

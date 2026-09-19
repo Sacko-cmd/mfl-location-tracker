@@ -27,7 +27,9 @@
   },
   "vars": {
     "CENTRAL_WALLET": "0xf45dfaa6233fae44",
-    "CONFIRM_MISSING_POLLS": "3"
+    "CONFIRM_MISSING_POLLS": "3",
+    "DISCORD_APPLICATION_ID": "",
+    "DISCORD_PUBLIC_KEY": ""
   },
   "secrets": {
     "required": [
