@@ -1,0 +1,38 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "mfl-location-tracker-cloudflare",
+  "account_id": "6bd9370000b479f55a52dec3c5647417",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-18",
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
+  "workers_dev": true,
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "mfl-location-tracker-cloudflare",
+      "database_id": "119daf03-4a00-4d9d-b0e1-bd20aa497c4c",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "triggers": {
+    "crons": [
+      "* * * * *"
+    ]
+  },
+  "vars": {
+    "CENTRAL_WALLET": "0xf45dfaa6233fae44",
+    "CONFIRM_MISSING_POLLS": "3"
+  },
+  "secrets": {
+    "required": [
+      "ADMIN_TOKEN",
+      "DISCORD_WEBHOOK_URL"
+    ]
+  }
+}
